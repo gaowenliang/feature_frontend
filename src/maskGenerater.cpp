@@ -32,17 +32,21 @@ main( int argc, char** argv )
 
     std::cout << "#INFO: camera config is " << camera_model_file << std::endl;
     cam = camera_model::CameraFactory::instance( )->generateCameraFromYamlFile( camera_model_file );
+
     std::vector< double > params;
     cam->writeParameters( params );
+
     std::cout << cam->parametersToString( ) << std::endl;
     std::cout << "#INFO: LOADing camera config is DONE." << camera_model_file << std::endl;
 
     double maxMaskIncidentAngle = maxFOV / 2 * ( M_PI / 180.0 );
     double minMaskIncidentAngle = minFOV / 2 * ( M_PI / 180.0 );
-    std::cout << "[#INFO] max mask FOV: " << maxFOV << " degrees," << std::endl
-              << "[#INFO] min mask FOV: " << minFOV << " degrees," << std::endl
-              << "[#INFO] max mask Incident Angle: " << maxMaskIncidentAngle << " rad" << std::endl
-              << "[#INFO] min mask Incident Angle: " << minMaskIncidentAngle << " rad" << std::endl;
+
+    std::cout
+    << "[#INFO] max mask FOV: " << maxFOV << " degrees," << std::endl
+    << "[#INFO] min mask FOV: " << minFOV << " degrees," << std::endl
+    << "[#INFO] max mask Incident Angle: " << maxMaskIncidentAngle << " rad" << std::endl
+    << "[#INFO] min mask Incident Angle: " << minMaskIncidentAngle << " rad" << std::endl;
 
     int w, h;
     w = ( int )( cam->imageWidth( ) );
@@ -74,7 +78,8 @@ main( int argc, char** argv )
     }
 
     double t1 = cv::getTickCount( );
-    std::cout << "Total cost Time: " << 1000 * ( t1 - t0 ) / cv::getTickFrequency( ) << " ms" << std::endl;
+    std::cout << "Total cost Time: " << 1000 * ( t1 - t0 ) / cv::getTickFrequency( )
+              << " ms" << std::endl;
 
     cv::namedWindow( "mask_output", cv::WINDOW_NORMAL );
     cv::imshow( "mask_output", mask_output );
