@@ -1,0 +1,31 @@
+<launch>
+
+    <node pkg="feature_frontend" type="stereoPreprocess" name="preprocess"  output="screen">
+        <param name="is_image_show" type="bool" value="false"/>
+        <param name="down_sample_scale" type="double" value="1.0"/>
+        <remap from="/stereo/left/image_raw" to="/pg_17221110/image_raw"/>
+        <remap from="/stereo/right/image_raw" to="/pg_17221121/image_raw"/>
+        <remap from="/stereo/left/image" to="/pg_17221110/image"/>
+        <remap from="/stereo/right/image" to="/pg_17221121/image"/>
+    </node>
+
+    <node pkg="feature_frontend" type="monocam_node" name="feature" output="screen">
+      <rosparam>
+        image_topic:          /pg_17221110/image
+        cam_config_file:      /home/gao/ws/src/VINS_mix/config/dual/vins/cam_config_up.yaml
+        feature_config_file:  /home/gao/ws/src/VINS_mix/config/dual/vins/feature_config_up.yaml
+      </rosparam>
+    </node>
+
+    <node ns = "vins" name="vins" pkg="vins_os" type="vins_os" output="screen">
+        <param name="vins_folder" type="string" value="/home/gao/ws/src/VINS_mix/" />
+        <param name="num_of_cam" type="int" value="1" />
+        <rosparam subst_value="True">
+            vins_config_file:          /home/gao/ws/src/VINS_mix/config/dual/vins/vins_config.yaml
+            # individual setting for camera 0
+            camera0:
+                cam_config_file:        /home/gao/ws/src/VINS_mix/config/dual/vins/cam_config_up.yaml
+        </rosparam>
+    </node>
+
+</launch>

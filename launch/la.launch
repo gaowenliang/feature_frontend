@@ -1,0 +1,8 @@
+<launch>
+
+    <node pkg="vins_stereo" type="vins_stereo" name="vins_stereo" output="screen">
+      <param name="config_file" type="string" value= "/home/gao/ws/src/VINS_mix/config/dual/vins/dual.yaml" />
+    </node>
+
+
+</launch>
