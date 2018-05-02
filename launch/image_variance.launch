@@ -1,0 +1,14 @@
+<launch>
+    <arg name="cam"     default = "/home/gao/ws/src/vins/config/dual/vins/cam_config_F.yaml" />
+<!--    <arg name="cam"     default = "/home/gao/ws/devel/lib/camera_model/sc1_camera_calib.yaml" />-->
+    <arg name="image"   default = "/home/gao/ws/src/vins/config/dual/vins/mask_F.jpg" />
+
+    <node pkg="feature_frontend" type="image_variance" name="fisheye" output="screen">
+        <param name="data_save_path" type="string" value= "$(find feature_frontend)/data/"/>
+        <rosparam subst_value="True">
+            camera_model: $(arg cam)
+            mask: $(arg image)
+        </rosparam>
+    </node>
+
+</launch>

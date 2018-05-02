@@ -45,6 +45,9 @@ set(FRONTEND_LIB_SOURCE_FILES
 add_executable(maskGenerater    src/maskGenerater.cpp    )
 target_link_libraries(maskGenerater dw ${catkin_LIBRARIES} ${OpenCV_LIBS})
 
+add_executable(image_variance     src/image_variance.cpp    )
+target_link_libraries(image_variance dw ${catkin_LIBRARIES} ${OpenCV_LIBS})
+
 add_executable(stereoPreprocess    src/stereoPreprocess.cc )
 target_link_libraries(stereoPreprocess    ${catkin_LIBRARIES} ${OpenCV_LIBS})
 
