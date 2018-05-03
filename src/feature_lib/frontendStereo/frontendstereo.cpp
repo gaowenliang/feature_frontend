@@ -303,7 +303,9 @@ FeatureStereoTracker::getPoints( std::vector< std::vector< Eigen::Vector3d > >& 
                                  std::vector< int >& id )
 {
     points.push_back( getUndistortedPoints( ) );
+
     points.push_back( m_tracker_r->getUndistortedPoints( ) );
+
     id = getIdsPts( );
 }
 

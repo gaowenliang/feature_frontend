@@ -13,12 +13,18 @@ StereoTracker::readParameters( ros::NodeHandle nh )
         std::string prefix = boost::str( boost::format( "camera%d/" ) % camera_index );
 
         std::vector< std::string > cam_files;
+        std::vector< std::string > angle_files;
         std::vector< std::string > feature_files;
 
         cam_files.push_back(
         ros_utils::readParam< std::string >( nh, prefix + "cam_config_file_left" ) );
         cam_files.push_back(
         ros_utils::readParam< std::string >( nh, prefix + "cam_config_file_right" ) );
+
+        angle_files.push_back(
+        ros_utils::readParam< std::string >( nh, prefix + "error_config_left" ) );
+        angle_files.push_back(
+        ros_utils::readParam< std::string >( nh, prefix + "error_config_right" ) );
 
         feature_files.push_back(
         ros_utils::readParam< std::string >( nh, //
@@ -30,7 +36,8 @@ StereoTracker::readParameters( ros::NodeHandle nh )
         image_in_buf.resize( 2 );
         image_ptr.resize( 2 );
 
-        tracker = frontend::FrontendInit::newFrontend( )->init( frontend::STEREO, cam_files, feature_files );
+        tracker
+        = frontend::FrontendInit::newFrontend( )->init( frontend::STEREO, cam_files, angle_files, feature_files );
 
         max_freq = max_freq > tracker->freq( ) ? max_freq : tracker->freq( );
 
@@ -168,16 +175,20 @@ StereoTracker::pubFeature( ros::Time now_t )
     sensor_msgs::PointCloudPtr feature_points( new sensor_msgs::PointCloud );
     feature_points->header.stamp    = now_t;
     feature_points->header.frame_id = "world";
-    sensor_msgs::ChannelFloat32 id_of_point;   // id channel of each object
-    sensor_msgs::ChannelFloat32 cams_of_point; // id channel of each object
+    sensor_msgs::ChannelFloat32 error_of_point; // id channel of each object
+    sensor_msgs::ChannelFloat32 id_of_point;    // id channel of each object
+    sensor_msgs::ChannelFloat32 cams_of_point;  // id channel of each object
 
     if ( !tracker->isTracked( ) )
         return;
 
     std::vector< std::vector< Eigen::Vector3d > > un_pts;
+    std::vector< std::vector< double > > angle_pts;
     std::vector< int > id;
     std::vector< uchar > status;
-    tracker->getPoints( un_pts, status, id );
+
+    tracker->getPoints( un_pts, angle_pts, id );
+
     for ( unsigned int j = 0; j < id.size( ); j++ )
     {
         int p_id = id[j];
@@ -192,6 +203,7 @@ StereoTracker::pubFeature( ros::Time now_t )
         feature_points->points.push_back( p );
         id_of_point.values.push_back( p_id );
         cams_of_point.values.push_back( 0 );
+        error_of_point.values.push_back( angle_pts[0][j] );
 
         //        if ( !status[j] )
         //            continue;
@@ -202,10 +214,15 @@ StereoTracker::pubFeature( ros::Time now_t )
         feature_points->points.push_back( p );
         id_of_point.values.push_back( p_id );
         cams_of_point.values.push_back( 1 );
+        error_of_point.values.push_back( angle_pts[1][j] );
     }
 
     feature_points->channels.push_back( id_of_point );
+    feature_points->channels[0].name = "id_point";
     feature_points->channels.push_back( cams_of_point );
+    feature_points->channels[1].name = "id_camera";
+    feature_points->channels.push_back( error_of_point );
+    feature_points->channels[2].name = "angle_per_pix";
 
     pointsPub.publish( feature_points );
 }

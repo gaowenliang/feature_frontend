@@ -146,7 +146,7 @@ FrontendCamera::getErrorAngle( std::vector< cv::Point2f > points )
              && pt.y <= camera( )->imageHeight( ) )
             angles.push_back( error_angle_mat( pt.y, pt.x ) );
         else
-            angles.push_back( 5 / 57.29 ); // 5 degree error if track out
+            angles.push_back( 15 / 57.29 ); // 5 degree error if track out
     }
     return angles;
 }
