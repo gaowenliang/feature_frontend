@@ -5,50 +5,22 @@ namespace backward
 backward::SignalHandling sh;
 }
 
+#include <camera_model/camera_models/CameraFactory.h>
+#include <code_utils/eigen_utils.h>
+#include <code_utils/math_utils/Polynomial.h>
+#include <code_utils/sys_utils/eigen_file_io.hpp>
 #include <cv_bridge/cv_bridge.h>
-#include <ros/console.h>
-#include <ros/ros.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/image_encodings.h>
-
+#include <eigen3/Eigen/Eigen>
 #include <iomanip>
 #include <iostream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-
-#include <camera_model/camera_models/CameraFactory.h>
-#include <code_utils/eigen_utils.h>
-#include <code_utils/math_utils/Polynomial.h>
-
-template< class Matrix >
-void
-writeMatrixToBinary( const std::string filename, const Matrix& matrix )
-{
-    std::ofstream out( filename, ios::out | ios::binary | ios::trunc );
-    typename Matrix::Index rows = matrix.rows( ), cols = matrix.cols( );
-    out.write( ( char* )( &rows ), sizeof( typename Matrix::Index ) );
-    out.write( ( char* )( &cols ), sizeof( typename Matrix::Index ) );
-    out.write( ( char* )matrix.data( ), rows * cols * sizeof( typename Matrix::Scalar ) );
-    out.close( );
-}
-
-template< class Matrix >
-void
-parseMatrixFromBinary( const std::string filename, Matrix& matrix )
-{
-    std::ifstream in( filename, std::ios::in | std::ios::binary );
-    while ( in.peek( ) != EOF )
-    {
-        typename Matrix::Index rows = 0, cols = 0;
-        in.read( ( char* )( &rows ), sizeof( typename Matrix::Index ) );
-        in.read( ( char* )( &cols ), sizeof( typename Matrix::Index ) );
-        matrix.resize( rows, cols );
-        in.read( ( char* )matrix.data( ), rows * cols * sizeof( typename Matrix::Scalar ) );
-    }
-    in.close( );
-}
+#include <ros/console.h>
+#include <ros/ros.h>
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/image_encodings.h>
 
 int
 main( int argc, char** argv )
@@ -240,7 +212,7 @@ main( int argc, char** argv )
 
     std::cout << "[#INFO] write data start! \n";
 
-    writeMatrixToBinary< Eigen::MatrixXd >( data_save_path + "data_mat_t", error_angle_mat );
+    sys_utils::io::writeMatrixToBinary< Eigen::MatrixXd >( data_save_path + "data_mat_t", error_angle_mat );
 
     std::cout << "[#INFO] write data Done! \n";
 
