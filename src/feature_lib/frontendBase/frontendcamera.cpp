@@ -1,26 +1,11 @@
 #include "feature_frontend/feature_lib/frontendBase/frontendcamera.h"
 #include <camera_model/camera_models/CameraFactory.h>
+#include <code_utils/sys_utils/eigen_file_io.hpp>
 #include <fstream>
 #include <iostream>
 #include <opencv2/core/eigen.hpp>
 
 using namespace frontend;
-
-template< class Matrix >
-void
-parseMatrixFromBinary( const std::string filename, Matrix& matrix )
-{
-    std::ifstream in( filename, std::ios::in | std::ios::binary );
-    while ( in.peek( ) != EOF )
-    {
-        typename Matrix::Index rows = 0, cols = 0;
-        in.read( ( char* )( &rows ), sizeof( typename Matrix::Index ) );
-        in.read( ( char* )( &cols ), sizeof( typename Matrix::Index ) );
-        matrix.resize( rows, cols );
-        in.read( ( char* )matrix.data( ), rows * cols * sizeof( typename Matrix::Scalar ) );
-    }
-    in.close( );
-}
 
 FrontendCamera::FrontendCamera( std::string camera_file )
 {
@@ -33,7 +18,7 @@ FrontendCamera::FrontendCamera( std::string camera_file, std::string error_file 
 
     error_angle_mat.resize( camera( )->imageHeight( ), camera( )->imageWidth( ) );
 
-    parseMatrixFromBinary< Eigen::MatrixXd >( error_file, error_angle_mat );
+    sys_utils::io::parseMatrixFromBinary< Eigen::MatrixXd >( error_file, error_angle_mat );
 }
 
 bool
@@ -103,7 +88,7 @@ FrontendCamera::readCameraFromYamlFile( const std::string& filename, const std::
 
     error_angle_mat.resize( camera( )->imageHeight( ), camera( )->imageWidth( ) );
 
-    parseMatrixFromBinary< Eigen::MatrixXd >( error_file, error_angle_mat );
+    sys_utils::io::parseMatrixFromBinary< Eigen::MatrixXd >( error_file, error_angle_mat );
     std::cout << "Load Error Angle file:" << error_file << std::endl;
 
     return true;
