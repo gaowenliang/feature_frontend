@@ -102,6 +102,7 @@ FrontendCamera::undistortedPoints( const std::vector< cv::Point2f > pts )
     {
         Eigen::Vector2d a( pt.x, pt.y );
         Eigen::Vector3d b;
+
         m_cam->liftProjective( a, b );
 
         if ( m_is_rectify )
@@ -127,9 +128,14 @@ FrontendCamera::getErrorAngle( std::vector< cv::Point2f > points )
         // std::cout << pt.y << " " << pt.x << "\n";
         // std::cout << error_angle_mat( pt.y, pt.x ) << "\n";
 
-        if ( pt.x >= 0 && pt.x <= camera( )->imageWidth( ) && pt.y >= 0
-             && pt.y <= camera( )->imageHeight( ) )
+        if ( pt.x > 0                           //
+             && pt.y > 0                        //
+             && pt.x < camera( )->imageWidth( ) //
+             && pt.y < camera( )->imageHeight( ) )
+        {
+            // error_angle_mat(row_index, col_index)
             angles.push_back( error_angle_mat( pt.y, pt.x ) );
+        }
         else
             angles.push_back( 15 / 57.29 ); // 5 degree error if track out
     }
