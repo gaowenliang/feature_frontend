@@ -30,21 +30,21 @@ DualFisheyeTracker::readParameters( ros::NodeHandle nh )
 
         tracker = new RosTrack( );
         std::vector< std::string > cam_files;
+        std::vector< std::string > angle_files;
         std::vector< std::string > feature_files;
 
         if ( cameraIndex < NumOfStereo )
         {
-            cam_files.push_back(
-            ros_utils::readParam< std::string >( nh, prefix + "cam_config_file_left" ) );
-            cam_files.push_back(
-            ros_utils::readParam< std::string >( nh, prefix + "cam_config_file_right" ) );
+            cam_files.push_back( ros_utils::readParam< std::string >( nh, prefix + "cam_config_file_left" ) );
+            cam_files.push_back( ros_utils::readParam< std::string >( nh, prefix + "cam_config_file_right" ) );
 
-            feature_files.push_back(
-            ros_utils::readParam< std::string >( nh, //
-                                                 prefix + "feature_config_file" ) );
-            feature_files.push_back(
-            ros_utils::readParam< std::string >( nh, //
-                                                 prefix + "feature_config_file" ) );
+            angle_files.push_back( ros_utils::readParam< std::string >( nh, prefix + "error_config_left" ) );
+            angle_files.push_back( ros_utils::readParam< std::string >( nh, prefix + "error_config_right" ) );
+
+            feature_files.push_back( ros_utils::readParam< std::string >( nh, //
+                                                                          prefix + "feature_config_file" ) );
+            feature_files.push_back( ros_utils::readParam< std::string >( nh, //
+                                                                          prefix + "feature_config_file" ) );
 
             tracker->image_in_buf.resize( 2 );
 
@@ -54,10 +54,11 @@ DualFisheyeTracker::readParameters( ros::NodeHandle nh )
         }
         else
         {
-            cam_files.push_back(
-            ros_utils::readParam< std::string >( nh, prefix + "cam_config_file" ) );
-            feature_files.push_back(
-            ros_utils::readParam< std::string >( nh, prefix + "feature_config_file" ) );
+            cam_files.push_back( ros_utils::readParam< std::string >( nh, prefix + "cam_config_file" ) );
+            angle_files.push_back( ros_utils::readParam< std::string >( nh, //
+                                                                        prefix + "error_config_file" ) );
+            feature_files.push_back( ros_utils::readParam< std::string >( nh, //
+                                                                          prefix + "feature_config_file" ) );
 
             tracker->image_in_buf.resize( 1 );
 

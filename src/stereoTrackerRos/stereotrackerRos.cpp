@@ -16,22 +16,16 @@ StereoTracker::readParameters( ros::NodeHandle nh )
         std::vector< std::string > angle_files;
         std::vector< std::string > feature_files;
 
-        cam_files.push_back(
-        ros_utils::readParam< std::string >( nh, prefix + "cam_config_file_left" ) );
-        cam_files.push_back(
-        ros_utils::readParam< std::string >( nh, prefix + "cam_config_file_right" ) );
+        cam_files.push_back( ros_utils::readParam< std::string >( nh, prefix + "cam_config_file_left" ) );
+        cam_files.push_back( ros_utils::readParam< std::string >( nh, prefix + "cam_config_file_right" ) );
 
-        angle_files.push_back(
-        ros_utils::readParam< std::string >( nh, prefix + "error_config_left" ) );
-        angle_files.push_back(
-        ros_utils::readParam< std::string >( nh, prefix + "error_config_right" ) );
+        angle_files.push_back( ros_utils::readParam< std::string >( nh, prefix + "error_config_left" ) );
+        angle_files.push_back( ros_utils::readParam< std::string >( nh, prefix + "error_config_right" ) );
 
-        feature_files.push_back(
-        ros_utils::readParam< std::string >( nh, //
-                                             prefix + "feature_config_file" ) );
-        feature_files.push_back(
-        ros_utils::readParam< std::string >( nh, //
-                                             prefix + "feature_config_file" ) );
+        feature_files.push_back( ros_utils::readParam< std::string >( nh, //
+                                                                      prefix + "feature_config_file" ) );
+        feature_files.push_back( ros_utils::readParam< std::string >( nh, //
+                                                                      prefix + "feature_config_file" ) );
 
         image_in_buf.resize( 2 );
         image_ptr.resize( 2 );
