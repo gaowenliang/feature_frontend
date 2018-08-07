@@ -1,7 +1,7 @@
 <launch>
-    <arg name="cam"     default = "/home/gao/ws/src/vins/config/dual/cam_down_camera_calib.yaml" />
+    <arg name="cam"     default = "/home/gao/ws/src/vins/config/dual/cam_up_camera_calib.yaml" />
 <!--    <arg name="cam"     default = "/home/gao/ws/devel/lib/camera_model/sc1_camera_calib.yaml" />-->
-    <arg name="image"   default = "/home/gao/ws/src/vins/config/dual/mask_down.jpg" />
+    <arg name="image"   default = "/home/gao/ws/src/vins/config/dual/125.bmp" />
 
     <node pkg="feature_frontend" type="image_variance" name="fisheye" output="screen">
         <param name="data_save_path" type="string" value= "$(find feature_frontend)/data/"/>

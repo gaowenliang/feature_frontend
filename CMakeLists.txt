@@ -58,6 +58,14 @@ add_executable(dualfisheyefeaturenode
     )
 target_link_libraries(dualfisheyefeaturenode dw ${catkin_LIBRARIES} ${OpenCV_LIBS})
 
+add_executable(multistereofeaturenode
+    src/multistereo_node.cpp
+    src/multistereo/multistereotracker.cpp
+    ${FRONTEND_LIB_SOURCE_FILES}
+    )
+target_link_libraries(multistereofeaturenode dw ${catkin_LIBRARIES} ${OpenCV_LIBS})
+
+
 add_executable(monocam_node
     src/monocam_node.cpp
     src/monotrackerRos/monotrackerRos.cpp

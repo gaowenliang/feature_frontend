@@ -1,9 +1,9 @@
 <launch>
 
 <node pkg="feature_frontend" type="maskGenerater" name="maskGenerater" output="screen">
-    <param name="camera_model" type="string" value= "/home/gao/Dropbox/reading/Pan Jie/tum_config.yaml"/>
-    <param name="output_image" type="string" value= "/home/gao/Dropbox/reading/Pan Jie/mask.bmp"/>
-    <param name="maxFOV" type="int" value= "195"/>
+    <param name="camera_model" type="string" value= "/home/gao/ws/src/vins/config/dual/cam_up_camera_calib.yaml"/>
+    <param name="output_image" type="string" value= "/home/gao/ws/src/vins/config/dual/125.bmp"/>
+    <param name="maxFOV" type="int" value= "280"/>
     <param name="minFOV" type="int" value= "0"/>
 </node>
 

@@ -1,7 +1,7 @@
 clear 
-close all
+%close all
 
-data = dlmread('../data/data_t.txt');
+data = dlmread('../data/752.txt');
 
 data_num = size(data);
 
@@ -18,12 +18,12 @@ col_center = 512;
 
 r = sqrt((row - row_center).^2 + (col - col_center).^2);
 
-figure (1)
-plot(r, angle, 'b.');
-xlabel('image coordinate: pixel');                
-ylabel('standard variance: degree'); 
+% figure (1)
+% plot(r, angle, 'b.');
+% xlabel('image coordinate: pixel');                
+% ylabel('standard variance: degree'); 
 
-figure (2)
+figure 
 surface(image);
 shading interp ;
 xlabel('x-axis coordinate: pixel');                

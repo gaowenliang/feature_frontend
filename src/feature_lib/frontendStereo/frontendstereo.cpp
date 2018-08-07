@@ -94,17 +94,23 @@ FeatureStereoTracker::trackFeatures( const cv::Mat& left_image, const cv::Mat& r
 
     getSparseFlow( )->calc( image_pre( ), left_image, ptsPre( ), ptsThis( ), left_status, left_err );
 
-    if ( isRansac( ) && !ptsThis( ).empty( ) && !left_status.empty( ) )
+    if ( isRansac( )             //
+         && !ptsThis( ).empty( ) //
+         && !left_status.empty( ) )
     {
         cv::Mat F_fund;
         std::vector< uchar > F_status;
         F_fund = cv::findFundamentalMat( ptsPre( ), ptsThis( ), cv::FM_RANSAC, 0.5, 0.99, F_status );
-        reduce_vector( ptsThis( ), F_status, left_status );
-        reduce_vector( cntTrack( ), F_status, left_status );
-        reduce_vector( idsPts( ), F_status, left_status );
 
-        if ( isShowTrack( ) )
-            reduce_vector( ptsPre( ), F_status );
+        if ( !F_status.empty( ) )
+        {
+            reduce_vector( ptsThis( ), F_status, left_status );
+            reduce_vector( cntTrack( ), F_status, left_status );
+            reduce_vector( idsPts( ), F_status, left_status );
+
+            if ( isShowTrack( ) )
+                reduce_vector( ptsPre( ), F_status );
+        }
     }
 
     if ( is_track_right && !ptsThis( ).empty( ) )
@@ -140,40 +146,43 @@ FeatureStereoTracker::trackFeatures( const cv::Mat& left_image, const cv::Mat& r
                                                  0.99,
                                                  trackStatus( ) );
 
-                for ( loop_index_t index = 0; index < loop_index_t( m_tracker_r->ptsThis( ).size( ) ); ++index )
-                {
-                    if ( trackStatus( ).empty( ) )
-                        break;
-                    if ( trackStatus( )[index] )
-                        if ( !rightRect.contains( m_tracker_r->ptsThis( )[index] ) //
-                             || !right_status[index]
-                             || !right_back_status[index] )
-                        {
-                            trackStatus( )[index] = 0;
-                        }
-                        else
-                        {
-                            double dis = ( ptsThis( )[index].x - pts_track_back[index].x )
-                                         * ( ptsThis( )[index].x - pts_track_back[index].x )
-                                         + ( ptsThis( )[index].y - pts_track_back[index].y )
-                                           * ( ptsThis( )[index].y - pts_track_back[index].y );
-                            if ( dis < 0.3 * 0.3 )
-                                trackStatus( )[index] = 1;
-
-                            float x = ( ptsThis( )[index] - m_tracker_r->ptsThis( )[index] ).x;
-                            float y = ( ptsThis( )[index] - m_tracker_r->ptsThis( )[index] ).y;
-                            //  float dis = sqrt( x * x + y * y );
-                            //  std::cout << "id " << ids[i] << " dis " << dis
-                            //  << " depth "
-                            //            << 0.25 * 204.5 / dis << std::endl;
-
-                            float dis_sqre = x * x + y * y;
-                            if ( dis_sqre > 6400 ) // 80 pixcel, 0.69 m
+                if ( !trackStatus( ).empty( ) )
+                    for ( loop_index_t index = 0;
+                          index < loop_index_t( m_tracker_r->ptsThis( ).size( ) );
+                          ++index )
+                    {
+                        if ( trackStatus( )[index] )
+                            if ( !rightRect.contains( m_tracker_r->ptsThis( )[index] ) //
+                                 || !right_status[index] || !right_back_status[index] )
+                            {
                                 trackStatus( )[index] = 0;
-                        }
-                    else
-                        continue;
-                }
+                            }
+                            else
+                            {
+                                double dis
+                                = ( ptsThis( )[index].x - pts_track_back[index].x )
+                                  * ( ptsThis( )[index].x - pts_track_back[index].x )
+                                  + ( ptsThis( )[index].y - pts_track_back[index].y )
+                                    * ( ptsThis( )[index].y - pts_track_back[index].y );
+                                if ( dis < 0.3 * 0.3 )
+                                    trackStatus( )[index] = 1;
+
+                                float x
+                                = ( ptsThis( )[index] - m_tracker_r->ptsThis( )[index] ).x;
+                                float y
+                                = ( ptsThis( )[index] - m_tracker_r->ptsThis( )[index] ).y;
+                                //  float dis = sqrt( x * x + y * y );
+                                //  std::cout << "id " << ids[i] << " dis " << dis
+                                //  << " depth "
+                                //            << 0.25 * 204.5 / dis << std::endl;
+
+                                float dis_sqre = x * x + y * y;
+                                if ( dis_sqre > 6400 ) // 80 pixcel, 0.69 m
+                                    trackStatus( )[index] = 0;
+                            }
+                        else
+                            continue;
+                    }
 
                 reduce_vector( ptsThis( ), trackStatus( ), right_status );
                 reduce_vector( m_tracker_r->ptsThis( ), trackStatus( ), right_status );
@@ -190,8 +199,7 @@ cv::Mat
 FeatureStereoTracker::draw( )
 {
     if ( !image_pre( ).empty( ) //
-         && !getPtsPre( ).empty( )
-         && !getTrackStatus( ).empty( ) )
+         && !getPtsPre( ).empty( ) && !getTrackStatus( ).empty( ) )
     {
         int height = row( );
         int width  = col( );

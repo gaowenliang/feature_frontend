@@ -1,26 +1,21 @@
-#include "feature_frontend/dualFisheye/dualfisheyetracker.h"
-
-#define OMP 1
+#include "feature_frontend/multistereo/multistereotracker.h"
 
 using namespace ros_utils;
 
-DualFisheyeTracker::DualFisheyeTracker( ) { FREQ = 100; }
+MultiStereoTracker::MultiStereoTracker( ) { FREQ = 100; }
 
-DualFisheyeTracker::DualFisheyeTracker( ros::NodeHandle nh )
+MultiStereoTracker::MultiStereoTracker( ros::NodeHandle nh )
 {
     FREQ = 100;
     readParameters( nh );
 }
 
 void
-DualFisheyeTracker::readParameters( ros::NodeHandle nh )
+MultiStereoTracker::readParameters( ros::NodeHandle nh )
 {
-
     NumOfStereo = readParam< int >( nh, "camera_num_stereo" );
-    NumOfMono   = readParam< int >( nh, "camera_num_mono" );
-    NumOfCamera = NumOfStereo + NumOfMono;
 
-    p_Trackers.resize( NumOfCamera );
+    p_Trackers.resize( NumOfStereo );
 
     int maxFreq     = 0;
     int cameraIndex = 0;
@@ -53,21 +48,6 @@ DualFisheyeTracker::readParameters( ros::NodeHandle nh )
                                                                              angle_files,
                                                                              feature_files );
         }
-        else
-        {
-            cam_files.push_back( ros_utils::readParam< std::string >( nh, prefix + "cam_config_file" ) );
-            angle_files.push_back( ros_utils::readParam< std::string >( nh, //
-                                                                        prefix + "error_config_file" ) );
-            feature_files.push_back( ros_utils::readParam< std::string >( nh, //
-                                                                          prefix + "feature_config_file" ) );
-
-            tracker->image_in_buf.resize( 1 );
-
-            tracker->tracker = frontend::FrontendInit::newFrontend( )->init( frontend::MONO, //
-                                                                             cam_files,
-                                                                             angle_files,
-                                                                             feature_files );
-        }
 
         if ( tracker->tracker->isShowTrack( ) )
         {
@@ -91,86 +71,77 @@ DualFisheyeTracker::readParameters( ros::NodeHandle nh )
 
     FREQ = maxFreq;
 
-    if ( NumOfCamera == 6 )
+    if ( NumOfStereo == 4 )
     {
-        assert( NumOfCamera == 6 );
-        App6ImgSynchronizer* sync = new App6ImgSynchronizer( AppSync6Images( 30 ),
+        assert( NumOfStereo == 4 );
+        App4ImgSynchronizer* sync = new App4ImgSynchronizer( AppSync4Images( 30 ),
                                                              *( p_Trackers[0]->p_subImgs ), //
                                                              *( p_Trackers[1]->p_subImgs ),
                                                              *( p_Trackers[2]->p_subImgs ),
-                                                             *( p_Trackers[3]->p_subImgs ),
-                                                             *( p_Trackers[4]->p_subImgs ),
-                                                             *( p_Trackers[5]->p_subImgs ) );
+                                                             *( p_Trackers[3]->p_subImgs ) );
 
-        sync->registerCallback( boost::bind( &DualFisheyeTracker::multi_mix_callback, //
+        sync->registerCallback( boost::bind( &MultiStereoTracker::multi_mix_callback, //
                                              this,
                                              _1,
                                              _2,
                                              _3,
-                                             _4,
-                                             _5,
-                                             _6 ) );
+                                             _4 ) );
     }
 
     pubPoints = nh.advertise< sensor_msgs::PointCloud >( "feature", 1000 );
 }
 
 void
-DualFisheyeTracker::multi_mix_callback( const sensor_msgs::ImageConstPtr& imgMsgL,
+MultiStereoTracker::multi_mix_callback( const sensor_msgs::ImageConstPtr& imgMsgL,
                                         const sensor_msgs::ImageConstPtr& imgMsgF,
                                         const sensor_msgs::ImageConstPtr& imgMsgR,
-                                        const sensor_msgs::ImageConstPtr& imgMsgB,
-                                        const sensor_msgs::ImageConstPtr& imgMsgU,
-                                        const sensor_msgs::ImageConstPtr& imgMsgD )
+                                        const sensor_msgs::ImageConstPtr& imgMsgB )
 {
+
     TicToc t_track;
 
     //    ROS_INFO( "Recieving image %lf", img_msg->header.stamp.toSec( ) );
-    if ( firstImageFlag )
     {
-        firstImageFlag = false;
-        firstImageTime = imgMsgL->header.stamp.toSec( );
-    }
-
-    // frequency control
-    if ( round( 1.0 * detectCount / ( imgMsgL->header.stamp.toSec( ) - firstImageTime ) ) <= FREQ )
-    {
-        frondendCtrl[0] = true;
-        frondendCtrl[1] = true;
-        // reset the frequency control
-        if ( abs( 1.0 * detectCount / ( imgMsgL->header.stamp.toSec( ) - firstImageTime ) - FREQ )
-             < 0.01 * FREQ )
+        if ( firstImageFlag )
         {
+            firstImageFlag = false;
             firstImageTime = imgMsgL->header.stamp.toSec( );
-            detectCount    = 0;
+        }
+
+        // frequency control
+        if ( round( 1.0 * detectCount / ( imgMsgL->header.stamp.toSec( ) - firstImageTime ) ) <= FREQ )
+        {
+            frondendCtrl[0] = true;
+            frondendCtrl[1] = true;
+            // reset the frequency control
+            if ( abs( 1.0 * detectCount / ( imgMsgL->header.stamp.toSec( ) - firstImageTime ) - FREQ )
+                 < 0.01 * FREQ )
+            {
+                firstImageTime = imgMsgL->header.stamp.toSec( );
+                detectCount    = 0;
+            }
+        }
+        else
+        {
+            frondendCtrl[0] = false;
+            frondendCtrl[1] = false;
         }
     }
-    else
-    {
-        frondendCtrl[0] = false;
-        frondendCtrl[1] = false;
-    }
 
-    p_Trackers[0]->image_ptr = cv_bridge::toCvCopy( imgMsgL, sensor_msgs::image_encodings::MONO8 );
-    p_Trackers[1]->image_ptr = cv_bridge::toCvCopy( imgMsgF, sensor_msgs::image_encodings::MONO8 );
-    p_Trackers[2]->image_ptr = cv_bridge::toCvCopy( imgMsgR, sensor_msgs::image_encodings::MONO8 );
-    p_Trackers[3]->image_ptr = cv_bridge::toCvCopy( imgMsgB, sensor_msgs::image_encodings::MONO8 );
-    p_Trackers[4]->image_ptr = cv_bridge::toCvCopy( imgMsgU, sensor_msgs::image_encodings::MONO8 );
-    p_Trackers[5]->image_ptr = cv_bridge::toCvCopy( imgMsgD, sensor_msgs::image_encodings::MONO8 );
+    {
+        p_Trackers[0]->image_ptr = cv_bridge::toCvCopy( imgMsgL, sensor_msgs::image_encodings::MONO8 );
+        p_Trackers[1]->image_ptr = cv_bridge::toCvCopy( imgMsgF, sensor_msgs::image_encodings::MONO8 );
+        p_Trackers[2]->image_ptr = cv_bridge::toCvCopy( imgMsgR, sensor_msgs::image_encodings::MONO8 );
+        p_Trackers[3]->image_ptr = cv_bridge::toCvCopy( imgMsgB, sensor_msgs::image_encodings::MONO8 );
+    }
 
     for ( auto& tracker : p_Trackers )
     {
-        if ( tracker->tracker->Type( ) == frontend::STEREO )
-        {
-            tracker->image_in_buf[0]
-            = tracker->image_ptr->image.rowRange( 0, tracker->tracker->row( ) );
-            tracker->image_in_buf[1]
-            = tracker->image_ptr->image.rowRange( tracker->tracker->row( ), //
-                                                  2 * tracker->tracker->row( ) );
-        }
-        else
-            tracker->image_in_buf[0]
-            = tracker->image_ptr->image.rowRange( 0, tracker->tracker->row( ) );
+
+        tracker->image_in_buf[0] = tracker->image_ptr->image.rowRange( 0, tracker->tracker->row( ) );
+        tracker->image_in_buf[1]
+        = tracker->image_ptr->image.rowRange( tracker->tracker->row( ), //
+                                              2 * tracker->tracker->row( ) );
     }
 
     track( imgMsgL->header.stamp, frondendCtrl );
@@ -179,7 +150,7 @@ DualFisheyeTracker::multi_mix_callback( const sensor_msgs::ImageConstPtr& imgMsg
 }
 
 void
-DualFisheyeTracker::track( ros::Time now_t, bool* is_frondendCtrl )
+MultiStereoTracker::track( ros::Time now_t, bool* is_frondendCtrl )
 {
     TicTocPart t_track;
 
@@ -194,13 +165,13 @@ DualFisheyeTracker::track( ros::Time now_t, bool* is_frondendCtrl )
 #if OMP
 #pragma omp parallel for
 #endif
-    for ( camera_index = 0; camera_index < NumOfCamera; ++camera_index )
+    for ( camera_index = 0; camera_index < NumOfStereo; ++camera_index )
         p_Trackers[camera_index]->tracker->readImages( p_Trackers[camera_index]->image_in_buf );
 
 #if OMP
 #pragma omp parallel for
 #endif
-    for ( camera_index = 0; camera_index < NumOfCamera; ++camera_index )
+    for ( camera_index = 0; camera_index < NumOfStereo; ++camera_index )
     {
         p_Trackers[camera_index]->tracker->process( is_frondendCtrl );
     }
@@ -220,7 +191,7 @@ DualFisheyeTracker::track( ros::Time now_t, bool* is_frondendCtrl )
 #if OMP
 #pragma omp parallel for
 #endif
-        for ( camera_index = 0; camera_index < NumOfCamera; ++camera_index )
+        for ( camera_index = 0; camera_index < NumOfStereo; ++camera_index )
         {
             //            if ( t_track.tocEnd( ) > 1 / FREQ * 1000 )
             //                continue;
@@ -252,7 +223,7 @@ DualFisheyeTracker::track( ros::Time now_t, bool* is_frondendCtrl )
 }
 
 void
-DualFisheyeTracker::pubFeature( ros::Time now_t )
+MultiStereoTracker::pubFeature( ros::Time now_t )
 {
     sensor_msgs::PointCloudPtr feature_points( new sensor_msgs::PointCloud );
     feature_points->header.stamp    = now_t;
@@ -308,7 +279,7 @@ DualFisheyeTracker::pubFeature( ros::Time now_t )
                 id_of_point.values.push_back( p_id );
                 error_of_point.values.push_back( angle_pts[0][j] );
 
-                cams_of_point.values.push_back( 0 );
+                cams_of_point.values.push_back( camera_index );
 
                 geometry_msgs::Point32 pt_r;
                 pt_r.x = un_pts[1][j]( 0 );
@@ -319,20 +290,7 @@ DualFisheyeTracker::pubFeature( ros::Time now_t )
                 id_of_point.values.push_back( p_id );
                 error_of_point.values.push_back( angle_pts[1][j] );
 
-                cams_of_point.values.push_back( 1 );
-            }
-            else if ( tracker->tracker->Type( ) == frontend::MONO )
-            {
-                //                continue;
-
-                feature_points->points.push_back( pt );
-                id_of_point.values.push_back( p_id );
-                error_of_point.values.push_back( angle_pts[0][j] );
-
-                cams_of_point.values.push_back( camera_index - NumOfStereo );
-
-                if ( ( camera_index - NumOfStereo ) == 1 )
-                    ++cnt_num;
+                cams_of_point.values.push_back( camera_index + 1 );
             }
         }
     }
