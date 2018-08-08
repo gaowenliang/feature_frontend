@@ -71,31 +71,65 @@ MultiStereoTracker::readParameters( ros::NodeHandle nh )
 
     FREQ = maxFreq;
 
-    if ( NumOfStereo == 4 )
+    switch ( NumOfStereo )
     {
-        assert( NumOfStereo == 4 );
-        App4ImgSynchronizer* sync = new App4ImgSynchronizer( AppSync4Images( 30 ),
-                                                             *( p_Trackers[0]->p_subImgs ), //
-                                                             *( p_Trackers[1]->p_subImgs ),
-                                                             *( p_Trackers[2]->p_subImgs ),
-                                                             *( p_Trackers[3]->p_subImgs ) );
+        case 2:
+        {
+            assert( NumOfStereo == 2 );
+            App2ImgSynchronizer* sync = new App2ImgSynchronizer( AppSync2Images( 30 ),
+                                                                 *( p_Trackers[0]->p_subImgs ), //
+                                                                 *( p_Trackers[1]->p_subImgs ) );
 
-        sync->registerCallback( boost::bind( &MultiStereoTracker::multi_mix_callback, //
-                                             this,
-                                             _1,
-                                             _2,
-                                             _3,
-                                             _4 ) );
+            sync->registerCallback( boost::bind( &MultiStereoTracker::multi2_callback, //
+                                                 this,
+                                                 _1,
+                                                 _2 ) );
+        }
+        break;
+        case 3:
+        {
+            assert( NumOfStereo == 3 );
+            App3ImgSynchronizer* sync = new App3ImgSynchronizer( AppSync3Images( 30 ),
+                                                                 *( p_Trackers[0]->p_subImgs ), //
+                                                                 *( p_Trackers[1]->p_subImgs ),
+                                                                 *( p_Trackers[2]->p_subImgs ) );
+
+            sync->registerCallback( boost::bind( &MultiStereoTracker::multi3_callback, //
+                                                 this,
+                                                 _1,
+                                                 _2,
+                                                 _3 ) );
+        }
+        break;
+        case 4:
+        {
+            assert( NumOfStereo == 4 );
+            App4ImgSynchronizer* sync = new App4ImgSynchronizer( AppSync4Images( 30 ),
+                                                                 *( p_Trackers[0]->p_subImgs ), //
+                                                                 *( p_Trackers[1]->p_subImgs ),
+                                                                 *( p_Trackers[2]->p_subImgs ),
+                                                                 *( p_Trackers[3]->p_subImgs ) );
+
+            sync->registerCallback( boost::bind( &MultiStereoTracker::multi4_callback, //
+                                                 this,
+                                                 _1,
+                                                 _2,
+                                                 _3,
+                                                 _4 ) );
+        }
+        break;
+        default:
+            break;
     }
 
     pubPoints = nh.advertise< sensor_msgs::PointCloud >( "feature", 1000 );
 }
 
 void
-MultiStereoTracker::multi_mix_callback( const sensor_msgs::ImageConstPtr& imgMsgL,
-                                        const sensor_msgs::ImageConstPtr& imgMsgF,
-                                        const sensor_msgs::ImageConstPtr& imgMsgR,
-                                        const sensor_msgs::ImageConstPtr& imgMsgB )
+MultiStereoTracker::multi4_callback( const sensor_msgs::ImageConstPtr& imgMsgL,
+                                     const sensor_msgs::ImageConstPtr& imgMsgF,
+                                     const sensor_msgs::ImageConstPtr& imgMsgR,
+                                     const sensor_msgs::ImageConstPtr& imgMsgB )
 {
 
     TicToc t_track;
@@ -133,6 +167,115 @@ MultiStereoTracker::multi_mix_callback( const sensor_msgs::ImageConstPtr& imgMsg
         p_Trackers[1]->image_ptr = cv_bridge::toCvCopy( imgMsgF, sensor_msgs::image_encodings::MONO8 );
         p_Trackers[2]->image_ptr = cv_bridge::toCvCopy( imgMsgR, sensor_msgs::image_encodings::MONO8 );
         p_Trackers[3]->image_ptr = cv_bridge::toCvCopy( imgMsgB, sensor_msgs::image_encodings::MONO8 );
+    }
+
+    for ( auto& tracker : p_Trackers )
+    {
+
+        tracker->image_in_buf[0] = tracker->image_ptr->image.rowRange( 0, tracker->tracker->row( ) );
+        tracker->image_in_buf[1]
+        = tracker->image_ptr->image.rowRange( tracker->tracker->row( ), //
+                                              2 * tracker->tracker->row( ) );
+    }
+
+    track( imgMsgL->header.stamp, frondendCtrl );
+
+    ROS_INFO( "Frontend costs %f", t_track.toc( ) );
+}
+
+void
+MultiStereoTracker::multi3_callback( const sensor_msgs::ImageConstPtr& imgMsgL,
+                                     const sensor_msgs::ImageConstPtr& imgMsgF,
+                                     const sensor_msgs::ImageConstPtr& imgMsgR )
+{
+    TicToc t_track;
+
+    //    ROS_INFO( "Recieving image %lf", img_msg->header.stamp.toSec( ) );
+    {
+        if ( firstImageFlag )
+        {
+            firstImageFlag = false;
+            firstImageTime = imgMsgL->header.stamp.toSec( );
+        }
+
+        // frequency control
+        if ( round( 1.0 * detectCount / ( imgMsgL->header.stamp.toSec( ) - firstImageTime ) ) <= FREQ )
+        {
+            frondendCtrl[0] = true;
+            frondendCtrl[1] = true;
+            // reset the frequency control
+            if ( abs( 1.0 * detectCount / ( imgMsgL->header.stamp.toSec( ) - firstImageTime ) - FREQ )
+                 < 0.01 * FREQ )
+            {
+                firstImageTime = imgMsgL->header.stamp.toSec( );
+                detectCount    = 0;
+            }
+        }
+        else
+        {
+            frondendCtrl[0] = false;
+            frondendCtrl[1] = false;
+        }
+    }
+
+    {
+        p_Trackers[0]->image_ptr = cv_bridge::toCvCopy( imgMsgL, sensor_msgs::image_encodings::MONO8 );
+        p_Trackers[1]->image_ptr = cv_bridge::toCvCopy( imgMsgF, sensor_msgs::image_encodings::MONO8 );
+        p_Trackers[2]->image_ptr = cv_bridge::toCvCopy( imgMsgR, sensor_msgs::image_encodings::MONO8 );
+    }
+
+    for ( auto& tracker : p_Trackers )
+    {
+
+        tracker->image_in_buf[0] = tracker->image_ptr->image.rowRange( 0, tracker->tracker->row( ) );
+        tracker->image_in_buf[1]
+        = tracker->image_ptr->image.rowRange( tracker->tracker->row( ), //
+                                              2 * tracker->tracker->row( ) );
+    }
+
+    track( imgMsgL->header.stamp, frondendCtrl );
+
+    ROS_INFO( "Frontend costs %f", t_track.toc( ) );
+}
+
+void
+MultiStereoTracker::multi2_callback( const sensor_msgs::ImageConstPtr& imgMsgL,
+                                     const sensor_msgs::ImageConstPtr& imgMsgF )
+{
+
+    TicToc t_track;
+
+    //    ROS_INFO( "Recieving image %lf", img_msg->header.stamp.toSec( ) );
+    {
+        if ( firstImageFlag )
+        {
+            firstImageFlag = false;
+            firstImageTime = imgMsgL->header.stamp.toSec( );
+        }
+
+        // frequency control
+        if ( round( 1.0 * detectCount / ( imgMsgL->header.stamp.toSec( ) - firstImageTime ) ) <= FREQ )
+        {
+            frondendCtrl[0] = true;
+            frondendCtrl[1] = true;
+            // reset the frequency control
+            if ( abs( 1.0 * detectCount / ( imgMsgL->header.stamp.toSec( ) - firstImageTime ) - FREQ )
+                 < 0.01 * FREQ )
+            {
+                firstImageTime = imgMsgL->header.stamp.toSec( );
+                detectCount    = 0;
+            }
+        }
+        else
+        {
+            frondendCtrl[0] = false;
+            frondendCtrl[1] = false;
+        }
+    }
+
+    {
+        p_Trackers[0]->image_ptr = cv_bridge::toCvCopy( imgMsgL, sensor_msgs::image_encodings::MONO8 );
+        p_Trackers[1]->image_ptr = cv_bridge::toCvCopy( imgMsgF, sensor_msgs::image_encodings::MONO8 );
     }
 
     for ( auto& tracker : p_Trackers )
@@ -233,24 +376,24 @@ MultiStereoTracker::pubFeature( ros::Time now_t )
     sensor_msgs::ChannelFloat32 cams_of_point;  // id channel of each object
     bool tracked = false;
 
-    int cnt_num = 0;
-
     int total_num    = 0;
     int camera_index = -1;
     for ( auto& tracker : p_Trackers )
     {
         ++camera_index;
 
-        if ( !tracker->tracker->isTracked( ) )
-            continue;
-        else
+        if ( tracker->tracker->isTracked( ) )
             tracked |= true;
+        else
+            continue;
 
         std::vector< std::vector< Eigen::Vector3d > > un_pts;
         std::vector< std::vector< double > > angle_pts;
         std::vector< int > id;
         //        tracker->tracker->getPoints( un_pts, id );
         tracker->tracker->getPoints( un_pts, angle_pts, id );
+        // std::cout << " un_pts[0] " << un_pts[0].size( ) << "\n";
+        // std::cout << " un_pts[1] " << un_pts[1].size( ) << "\n";
 
         total_num += id.size( );
 
@@ -258,40 +401,27 @@ MultiStereoTracker::pubFeature( ros::Time now_t )
         {
             int p_id = id[j];
 
-            //    std::cout << "un_pts_r " << un_pts[j].x( ) << " " <<
-            //    un_pts[j].y( ) << std::endl;
-            //  std::cout << "id " << p_id << std::endl;
-            //  std::cout << "un_pts_r " << un_pts_r[j].x( ) << " " <<
-            //  un_pts_r[j].y( ) << std::endl;
-
             geometry_msgs::Point32 pt;
             pt.x = un_pts[0][j]( 0 );
             pt.y = un_pts[0][j]( 1 );
             pt.z = un_pts[0][j]( 2 );
 
-            //            ROS_DEBUG( "point_out--  %lf %lf %lf", p.x, p.y, p.z );
+            feature_points->points.push_back( pt );
+            id_of_point.values.push_back( p_id );
+            error_of_point.values.push_back( angle_pts[0][j] );
 
-            if ( tracker->tracker->Type( ) == frontend::STEREO )
-            {
-                //                continue;
+            cams_of_point.values.push_back( camera_index * 2 );
 
-                feature_points->points.push_back( pt );
-                id_of_point.values.push_back( p_id );
-                error_of_point.values.push_back( angle_pts[0][j] );
+            geometry_msgs::Point32 pt_r;
+            pt_r.x = un_pts[1][j]( 0 );
+            pt_r.y = un_pts[1][j]( 1 );
+            pt_r.z = un_pts[1][j]( 2 );
 
-                cams_of_point.values.push_back( camera_index );
+            feature_points->points.push_back( pt_r );
+            id_of_point.values.push_back( p_id );
+            error_of_point.values.push_back( angle_pts[1][j] );
 
-                geometry_msgs::Point32 pt_r;
-                pt_r.x = un_pts[1][j]( 0 );
-                pt_r.y = un_pts[1][j]( 1 );
-                pt_r.z = un_pts[1][j]( 2 );
-
-                feature_points->points.push_back( pt_r );
-                id_of_point.values.push_back( p_id );
-                error_of_point.values.push_back( angle_pts[1][j] );
-
-                cams_of_point.values.push_back( camera_index + 1 );
-            }
+            cams_of_point.values.push_back( camera_index * 2 + 1 );
         }
     }
 
@@ -301,8 +431,6 @@ MultiStereoTracker::pubFeature( ros::Time now_t )
     feature_points->channels[1].name = "id_camera";
     feature_points->channels.push_back( error_of_point );
     feature_points->channels[2].name = "angle_per_pix";
-
-    ROS_DEBUG( "cnt_num %d", cnt_num );
 
     ROS_DEBUG( "all feature size %d", total_num );
     if ( tracked )

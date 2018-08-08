@@ -37,21 +37,47 @@ StereoTracker::readParameters( ros::NodeHandle nh )
 
         std::string image_sub_topic_left
         = ros_utils::readParam< std::string >( nh, prefix + "image_topic_left" );
+        image_topic.push_back( image_sub_topic_left );
 
         std::string image_sub_topic_right
         = ros_utils::readParam< std::string >( nh, prefix + "image_topic_right" );
+        image_topic.push_back( image_sub_topic_right );
 
-        p_subImgs[2 * camera_index]
-        = new ros_utils::ImageSubscriber( nh,
-                                          image_sub_topic_left, //
-                                          20,
-                                          ros::TransportHints( ).tcpNoDelay( true ) );
+        if ( image_sub_topic_left != image_sub_topic_right )
+        {
+            p_subImgs[2 * camera_index]
+            = new ros_utils::ImageSubscriber( nh,
+                                              image_sub_topic_left, //
+                                              20,
+                                              ros::TransportHints( ).tcpNoDelay( true ) );
 
-        p_subImgs[2 * camera_index + 1]
-        = new ros_utils::ImageSubscriber( nh,
-                                          image_sub_topic_right, //
-                                          20,
-                                          ros::TransportHints( ).tcpNoDelay( true ) );
+            p_subImgs[2 * camera_index + 1]
+            = new ros_utils::ImageSubscriber( nh,
+                                              image_sub_topic_right, //
+                                              20,
+                                              ros::TransportHints( ).tcpNoDelay( true ) );
+
+            ros_utils::App2ImgSynchronizer* sync
+            = new ros_utils::App2ImgSynchronizer( ros_utils::AppSync2Images( 30 ),
+                                                  *( p_subImgs[2 * camera_index] ), //
+                                                  *( p_subImgs[2 * camera_index + 1] ) );
+
+            sync->registerCallback( boost::bind( &StereoTracker::stereo_callback, //
+                                                 this,
+                                                 _1,
+                                                 _2 ) );
+        }
+        else
+        {
+            ROS_DEBUG( "combined stereo images " );
+
+            oneSubImgs
+            = nh.subscribe< sensor_msgs::Image >( image_sub_topic_left,
+                                                  10, //
+                                                  &StereoTracker::stereo_callback1,
+                                                  this,
+                                                  ros::TransportHints( ).tcpNoDelay( true ) );
+        }
 
         if ( tracker->isShowTrack( ) )
         {
@@ -63,16 +89,6 @@ StereoTracker::readParameters( ros::NodeHandle nh )
     }
 
     FREQ = max_freq;
-
-    ros_utils::App2ImgSynchronizer* sync
-    = new ros_utils::App2ImgSynchronizer( ros_utils::AppSync2Images( 30 ),
-                                          *( p_subImgs[0] ), //
-                                          *( p_subImgs[1] ) );
-
-    sync->registerCallback( boost::bind( &StereoTracker::stereo_callback, //
-                                         this,
-                                         _1,
-                                         _2 ) );
 
     pointsPub = nh.advertise< sensor_msgs::PointCloud >( "feature", 1000 );
 }
@@ -116,6 +132,49 @@ StereoTracker::stereo_callback( const sensor_msgs::ImageConstPtr& img_msg_l,
     image_in_buf[1] = image_ptr[1]->image.rowRange( 0, tracker->row( ) );
 
     track( img_msg_l->header.stamp, frondendCtrl );
+
+    ROS_INFO( "frontend all costs %f", t_track.toc( ) );
+}
+
+void
+StereoTracker::stereo_callback1( const sensor_msgs::ImageConstPtr& img_msg )
+{
+    TicToc t_track;
+
+    // ROS_INFO( "Recieving image %lf", img_msg->header.stamp.toSec( ) );
+    if ( first_image_flag )
+    {
+        first_image_flag = false;
+        first_image_time = img_msg->header.stamp.toSec( );
+    }
+
+    // frequency control
+    if ( round( 1.0 * detect_count / ( img_msg->header.stamp.toSec( ) - first_image_time ) ) <= FREQ )
+    {
+        frondendCtrl[0] = true;
+        frondendCtrl[1] = true;
+        // reset the frequency control
+        if ( abs( 1.0 * detect_count / ( img_msg->header.stamp.toSec( ) - first_image_time ) - FREQ )
+             < 0.01 * FREQ )
+        {
+            first_image_time = img_msg->header.stamp.toSec( );
+            detect_count     = 0;
+        }
+    }
+    else
+    {
+        frondendCtrl[0] = false;
+        frondendCtrl[1] = false;
+    }
+
+    image_ptr[0] = cv_bridge::toCvCopy( img_msg, sensor_msgs::image_encodings::MONO8 );
+    // image_ptr[1] = cv_bridge::toCvCopy( img_msg, sensor_msgs::image_encodings::MONO8 );
+
+    image_in_buf[0] = image_ptr[0]->image.rowRange( 0, tracker->row( ) );
+    image_in_buf[1] = image_ptr[0]->image.rowRange( tracker->row( ), //
+                                                    2 * tracker->row( ) );
+
+    track( img_msg->header.stamp, frondendCtrl );
 
     ROS_INFO( "frontend all costs %f", t_track.toc( ) );
 }

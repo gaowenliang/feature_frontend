@@ -30,10 +30,15 @@ class MultiStereoTracker
 
     void readParameters( ros::NodeHandle nh );
 
-    void multi_mix_callback( const sensor_msgs::ImageConstPtr& imgMsgL,
-                             const sensor_msgs::ImageConstPtr& imgMsgF,
-                             const sensor_msgs::ImageConstPtr& imgMsgR,
-                             const sensor_msgs::ImageConstPtr& imgMsgB );
+    void multi4_callback( const sensor_msgs::ImageConstPtr& imgMsgL,
+                          const sensor_msgs::ImageConstPtr& imgMsgF,
+                          const sensor_msgs::ImageConstPtr& imgMsgR,
+                          const sensor_msgs::ImageConstPtr& imgMsgB );
+    void multi3_callback( const sensor_msgs::ImageConstPtr& imgMsgL,
+                          const sensor_msgs::ImageConstPtr& imgMsgF,
+                          const sensor_msgs::ImageConstPtr& imgMsgR );
+    void multi2_callback( const sensor_msgs::ImageConstPtr& imgMsgL,
+                          const sensor_msgs::ImageConstPtr& imgMsgF );
 
     void track( ros::Time now_t, bool* is_frondendCtrl );
 

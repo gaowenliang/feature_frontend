@@ -15,8 +15,10 @@ class RosTrackStereo
 {
     public:
     frontend::FrontendPtr tracker;
+    std::vector< std::string > image_topic;
     std::vector< cv_bridge::CvImageConstPtr > image_ptr;
-    std::vector< ros_utils::ImageSubscriber* > p_subImgs;
+    std::vector< ros_utils::ImageSubscriber* > p_subImgs; // two cameras
+    ros::Subscriber oneSubImgs;                           // one camera
     ros::Publisher pubTtrackImage;
 };
 
@@ -29,6 +31,8 @@ class StereoTracker : public RosTrackStereo
 
     void stereo_callback( const sensor_msgs::ImageConstPtr& img_msg_l,
                           const sensor_msgs::ImageConstPtr& img_msg_r );
+
+    void stereo_callback1( const sensor_msgs::ImageConstPtr& img_msg );
 
     void track( ros::Time now_t, bool* is_frondendCtrl );
 
