@@ -34,7 +34,9 @@ include_directories(
 #set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 set(FRONTEND_LIB_SOURCE_FILES
+    ${PROJECT_SOURCE_DIR}/src/feature_lib/frontendBase/detector.cpp
     ${PROJECT_SOURCE_DIR}/src/feature_lib/frontendBase/detectorfast.cpp
+    ${PROJECT_SOURCE_DIR}/src/feature_lib/frontendBase/detectorharris.cpp
     ${PROJECT_SOURCE_DIR}/src/feature_lib/frontendBase/frontendbase.cpp
     ${PROJECT_SOURCE_DIR}/src/feature_lib/frontendBase/frontendcamera.cpp
     ${PROJECT_SOURCE_DIR}/src/feature_lib/frontendMono/frontendmono.cpp

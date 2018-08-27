@@ -30,6 +30,11 @@ class MultiStereoTracker
 
     void readParameters( ros::NodeHandle nh );
 
+    void multi5_callback( const sensor_msgs::ImageConstPtr& imgMsgL,
+                          const sensor_msgs::ImageConstPtr& imgMsgF,
+                          const sensor_msgs::ImageConstPtr& imgMsgR,
+                          const sensor_msgs::ImageConstPtr& imgMsgB,
+                          const sensor_msgs::ImageConstPtr& imgMsgT );
     void multi4_callback( const sensor_msgs::ImageConstPtr& imgMsgL,
                           const sensor_msgs::ImageConstPtr& imgMsgF,
                           const sensor_msgs::ImageConstPtr& imgMsgR,

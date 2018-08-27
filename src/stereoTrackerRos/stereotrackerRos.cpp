@@ -226,7 +226,8 @@ void
 StereoTracker::pubFeature( ros::Time now_t )
 {
     sensor_msgs::PointCloudPtr feature_points( new sensor_msgs::PointCloud );
-    feature_points->header.stamp    = now_t;
+    ros::Duration td( -0.0877 );
+    feature_points->header.stamp    = now_t + td;
     feature_points->header.frame_id = "world";
     sensor_msgs::ChannelFloat32 error_of_point; // id channel of each object
     sensor_msgs::ChannelFloat32 id_of_point;    // id channel of each object

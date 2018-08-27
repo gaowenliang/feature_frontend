@@ -118,11 +118,89 @@ MultiStereoTracker::readParameters( ros::NodeHandle nh )
                                                  _4 ) );
         }
         break;
+        case 5:
+        {
+            assert( NumOfStereo == 5 );
+            App5ImgSynchronizer* sync = new App5ImgSynchronizer( AppSync5Images( 30 ),
+                                                                 *( p_Trackers[0]->p_subImgs ), //
+                                                                 *( p_Trackers[1]->p_subImgs ),
+                                                                 *( p_Trackers[2]->p_subImgs ),
+                                                                 *( p_Trackers[3]->p_subImgs ),
+                                                                 *( p_Trackers[4]->p_subImgs ) );
+
+            sync->registerCallback( boost::bind( &MultiStereoTracker::multi5_callback, //
+                                                 this,
+                                                 _1,
+                                                 _2,
+                                                 _3,
+                                                 _4,
+                                                 _5 ) );
+        }
+        break;
         default:
             break;
     }
 
     pubPoints = nh.advertise< sensor_msgs::PointCloud >( "feature", 1000 );
+}
+
+void
+MultiStereoTracker::multi5_callback( const sensor_msgs::ImageConstPtr& imgMsgL,
+                                     const sensor_msgs::ImageConstPtr& imgMsgF,
+                                     const sensor_msgs::ImageConstPtr& imgMsgR,
+                                     const sensor_msgs::ImageConstPtr& imgMsgB,
+                                     const sensor_msgs::ImageConstPtr& imgMsgT )
+{
+    TicToc t_track;
+
+    //    ROS_INFO( "Recieving image %lf", img_msg->header.stamp.toSec( ) );
+    {
+        if ( firstImageFlag )
+        {
+            firstImageFlag = false;
+            firstImageTime = imgMsgL->header.stamp.toSec( );
+        }
+
+        // frequency control
+        if ( round( 1.0 * detectCount / ( imgMsgL->header.stamp.toSec( ) - firstImageTime ) ) <= FREQ )
+        {
+            frondendCtrl[0] = true;
+            frondendCtrl[1] = true;
+            // reset the frequency control
+            if ( abs( 1.0 * detectCount / ( imgMsgL->header.stamp.toSec( ) - firstImageTime ) - FREQ )
+                 < 0.01 * FREQ )
+            {
+                firstImageTime = imgMsgL->header.stamp.toSec( );
+                detectCount    = 0;
+            }
+        }
+        else
+        {
+            frondendCtrl[0] = false;
+            frondendCtrl[1] = false;
+        }
+    }
+
+    {
+        p_Trackers[0]->image_ptr = cv_bridge::toCvCopy( imgMsgL, sensor_msgs::image_encodings::MONO8 );
+        p_Trackers[1]->image_ptr = cv_bridge::toCvCopy( imgMsgF, sensor_msgs::image_encodings::MONO8 );
+        p_Trackers[2]->image_ptr = cv_bridge::toCvCopy( imgMsgR, sensor_msgs::image_encodings::MONO8 );
+        p_Trackers[3]->image_ptr = cv_bridge::toCvCopy( imgMsgB, sensor_msgs::image_encodings::MONO8 );
+        p_Trackers[4]->image_ptr = cv_bridge::toCvCopy( imgMsgT, sensor_msgs::image_encodings::MONO8 );
+    }
+
+    for ( auto& tracker : p_Trackers )
+    {
+
+        tracker->image_in_buf[0] = tracker->image_ptr->image.rowRange( 0, tracker->tracker->row( ) );
+        tracker->image_in_buf[1]
+        = tracker->image_ptr->image.rowRange( tracker->tracker->row( ), //
+                                              2 * tracker->tracker->row( ) );
+    }
+
+    track( imgMsgL->header.stamp, frondendCtrl );
+
+    ROS_INFO( "Frontend costs %f", t_track.toc( ) );
 }
 
 void
